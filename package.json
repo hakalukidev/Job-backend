@@ -4,8 +4,10 @@
   "description": "",
   "main": "server.js",
   "scripts": {
-    "start": "node server.js",
-    "test": "echo \"Error: no test specified\" && exit 1"
+  "start": "node dist/server.js",
+  "dev": "nodemon src/server.ts",
+  "build": "tsc",
+  "server": "nodemon src/server.ts"
   },
   "keywords": [],
   "author": "",
@@ -20,11 +22,14 @@
     "mongoose": "^9.7.0"
   },
   "devDependencies": {
-    "@types/bcryptjs": "^2.4.2",
-    "@types/cors": "^2.8.17",
+    "@types/bcryptjs": "^2.4.6",
+    "@types/cors": "^2.8.19",
     "@types/express": "^5.0.6",
-    "@types/jsonwebtoken": "^9.0.2",
-    "@types/node": "^20.11.0",
-    "nodemon": "^3.1.14"
+    "@types/jsonwebtoken": "^9.0.10",
+    "@types/node": "^20.19.43",
+    "nodemon": "^3.1.14",
+    "ts-node": "^10.9.2",
+    "tsx": "^4.22.4",
+    "typescript": "^6.0.3"
   }
 }

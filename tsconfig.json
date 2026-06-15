@@ -10,7 +10,10 @@
     "strict": false,
     "skipLibCheck": true,
     "resolveJsonModule": true,
-    "types": ["node"]
+    "types": ["node"],
+    "rootDir": "src",
+    "outDir": "dist"
   },
-  "include": ["**/*.ts"]
+  "include": ["src/**/*"]
+
 }

@@ -3,7 +3,8 @@ import jwt from 'jsonwebtoken';
 
 // ✅更好的做法: JWT payload এর জন্য আলাদা interface তৈরি করুন
 interface JwtPayload {
-  id: string;
+  id?: string;
+  userId?: string;
   email: string;
   iat?: number;
   exp?: number;
@@ -47,7 +48,8 @@ const auth = (req: AuthRequest, res: Response, next: NextFunction): void => {
     const decoded = jwt.verify(token, jwtSecret) as JwtPayload;
     
     // ✅ Validate decoded payload
-    if (!decoded.id || !decoded.email) {
+    const userId = decoded.id || decoded.userId;
+    if (!userId || !decoded.email) {
       res.status(401).json({ 
         success: false, 
         message: 'টোকেন অবৈধ: প্রয়োজনীয় তথ্য নেই' 
@@ -57,7 +59,7 @@ const auth = (req: AuthRequest, res: Response, next: NextFunction): void => {
 
     // ✅ Attach user to request
     req.user = {
-      id: decoded.id,
+      id: userId,
       email: decoded.email
     };
     

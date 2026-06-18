@@ -3,8 +3,7 @@ import express, { Request, Response, NextFunction } from 'express';
 import jwt from 'jsonwebtoken';
 import auth from '../middleware/auth';
 import { AuthRequest } from '../middleware/auth';
-import User from '../models/user';
-import bcrypt from 'bcryptjs';
+import User from '../models/User';
 
 const router = express.Router();
 
@@ -38,7 +37,7 @@ router.post('/demo-login', async (req: Request, res: Response) => {
         admin = new User({
           name: 'Super Admin',
           email: 'admin@jobprostuti.com',
-          password: await bcrypt.hash('admin123', 12),
+          password: 'admin123',
           role: 'admin',
           isActive: true
         });
@@ -164,7 +163,7 @@ router.put('/users/:id', auth, isAdmin, async (req: AuthRequest, res: Response) 
     const user = await User.findByIdAndUpdate(
       req.params.id,
       updates,
-      { new: true }
+      { returnDocument: 'after' }
     ).select('-password');
     
     if (!user) {

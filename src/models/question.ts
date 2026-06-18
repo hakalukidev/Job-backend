@@ -7,9 +7,18 @@ export interface IOption {
   D: string;
 }
 
+export interface IOptionImages {
+  A?: string;
+  B?: string;
+  C?: string;
+  D?: string;
+}
+
 export interface IQuestion extends Document {
   text: string;
+  imageUrl?: string;
   options: IOption;
+  optionImages?: IOptionImages;
   correctOption: 'A' | 'B' | 'C' | 'D';
   explanation?: string;
   subject?: string;
@@ -24,11 +33,18 @@ const questionSchema = new Schema<IQuestion>({
     type: String,
     required: [true, 'প্রশ্ন আবশ্যক']
   },
+  imageUrl: String,
   options: {
     A: { type: String, required: true },
     B: { type: String, required: true },
     C: { type: String, required: true },
     D: { type: String, required: true }
+  },
+  optionImages: {
+    A: String,
+    B: String,
+    C: String,
+    D: String
   },
   correctOption: {
     type: String,

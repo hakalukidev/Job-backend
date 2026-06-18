@@ -10,6 +10,8 @@ export interface IExam extends Document {
   durationMinutes: number;
   totalMarks: number;
   questions: mongoose.Types.ObjectId[];
+  status: 'running' | 'upcoming' | 'archived';
+  participantCount: number;
   isPublished: boolean;
 }
 
@@ -47,6 +49,15 @@ const examSchema = new Schema<IExam>({
     type: Schema.Types.ObjectId,
     ref: 'Question'
   }],
+  status: {
+    type: String,
+    enum: ['running', 'upcoming', 'archived'],
+    default: 'running'
+  },
+  participantCount: {
+    type: Number,
+    default: 0
+  },
   isPublished: {
     type: Boolean,
     default: false

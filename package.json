@@ -6,7 +6,7 @@
   "scripts": {
     "start": "tsx src/server.ts",
     "dev": "tsx watch src/server.ts",
-    "build": "tsc --noEmit",
+    "build": "tsc",
     "server": "tsx watch src/server.ts",
     "vercel-build": "npm run build"
   },

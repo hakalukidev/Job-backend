@@ -2,14 +2,29 @@
   "version": 2,
   "builds": [
     {
-      "src": "dist/index.js",
-      "use": "@vercel/node"
+      "src": "dist/server.js",
+      "use": "@vercel/node",
+      "config": {
+        "maxDuration": 60,
+        "memory": 1024
+      }
     }
   ],
   "routes": [
     {
+      "src": "/health",
+      "dest": "dist/server.js"
+    },
+    {
+      "src": "/api/(.*)",
+      "dest": "dist/server.js"
+    },
+    {
       "src": "/(.*)",
-      "dest": "dist/index.js"
+      "dest": "dist/server.js"
     }
-  ]
+  ],
+  "env": {
+    "NODE_ENV": "production"
+  }
 }

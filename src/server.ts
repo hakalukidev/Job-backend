@@ -21,10 +21,10 @@ app.use(express.urlencoded({ extended: true }));
 const MONGODB_URI = process.env.MONGODB_URI || 'mongodb://localhost:27017/jobprostuti';
 
 mongoose.connect(MONGODB_URI, {
-  serverSelectionTimeoutMS: 60000,      // 60 seconds
-  connectTimeoutMS: 60000,               // 60 seconds
-  socketTimeoutMS: 60000,                // 60 seconds
-  heartbeatFrequencyMS: 10000,           // 10 seconds
+  serverSelectionTimeoutMS: 60000,   
+  connectTimeoutMS: 60000,              
+  socketTimeoutMS: 60000,                
+  heartbeatFrequencyMS: 10000,        
   retryWrites: true,
   retryReads: true,
 })

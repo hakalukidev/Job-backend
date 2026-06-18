@@ -14,28 +14,43 @@ const courses_1 = __importDefault(require("./routes/courses"));
 const swagger_1 = __importDefault(require("./routes/swagger"));
 dotenv_1.default.config();
 const app = (0, express_1.default)();
-// Middleware
+// ===== CORS - সব Allow =====
 app.use((0, cors_1.default)());
 app.use(express_1.default.json());
 app.use(express_1.default.urlencoded({ extended: true }));
-// MongoDB Connection with increased timeouts
+// ===== MONGODB CONNECTION WITH RETRY =====
 const MONGODB_URI = process.env.MONGODB_URI || 'mongodb://localhost:27017/jobprostuti';
-mongoose_1.default.connect(MONGODB_URI, {
-    serverSelectionTimeoutMS: 60000,
-    connectTimeoutMS: 60000,
-    socketTimeoutMS: 60000,
-    heartbeatFrequencyMS: 10000,
-    retryWrites: true,
-    retryReads: true,
-})
-    .then(() => {
-    console.log('✅ MongoDB connected successfully!');
-})
-    .catch(err => {
-    console.error('❌ MongoDB connection error:', err.message);
-    console.error('🔧 Full error:', err);
+const connectDB = async () => {
+    try {
+        await mongoose_1.default.connect(MONGODB_URI, {
+            serverSelectionTimeoutMS: 30000,
+            connectTimeoutMS: 30000,
+            socketTimeoutMS: 45000,
+            heartbeatFrequencyMS: 10000,
+            retryWrites: true,
+            retryReads: true,
+        });
+        console.log('✅ MongoDB connected successfully!');
+        return true;
+    }
+    catch (error) {
+        console.error('❌ MongoDB connection failed:', error);
+        console.log('🔄 Retrying in 5 seconds...');
+        setTimeout(connectDB, 5000);
+        return false;
+    }
+};
+// Connection events
+mongoose_1.default.connection.on('connected', () => {
+    console.log('✅ MongoDB connected');
 });
-// Routes
+mongoose_1.default.connection.on('error', (err) => {
+    console.error('❌ MongoDB connection error:', err);
+});
+mongoose_1.default.connection.on('disconnected', () => {
+    console.log('⚠️ MongoDB disconnected');
+});
+// ===== ROUTES =====
 app.get('/', (req, res) => {
     res.json({
         message: 'Job Prostuti API Running',
@@ -55,6 +70,7 @@ app.use('/api/admin', admin_1.default);
 app.use('/api/admin/content', contentAdmin_1.default);
 app.use(swagger_1.default);
 app.use('/api', courses_1.default);
+// ===== ERROR HANDLING =====
 app.use((req, res) => {
     res.status(404).json({ success: false, message: 'Route not found' });
 });
@@ -62,8 +78,12 @@ app.use((err, req, res, next) => {
     console.error('Server error:', err);
     res.status(500).json({ success: false, message: err.message || 'Internal server error' });
 });
+// ===== START SERVER =====
 const PORT = process.env.PORT || 5000;
-app.listen(PORT, () => {
-    console.log(`🚀 Server running on http://localhost:${PORT}`);
+// First connect to MongoDB, then start server
+connectDB().then(() => {
+    app.listen(PORT, () => {
+        console.log(`🚀 Server running on http://localhost:${PORT}`);
+    });
 });
 exports.default = app;

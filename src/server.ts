@@ -1,3 +1,4 @@
+// server.ts - সম্পূর্ণ ফাইল
 import cors from 'cors';
 import dotenv from 'dotenv';
 import express from 'express';
@@ -12,33 +13,20 @@ dotenv.config();
 
 const app = express();
 
-// ===== CORS =====
-const corsOptions = {
-  origin: '*',
-  methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH', 'OPTIONS'],
-  allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With', 'Accept', 'Origin'],
-  exposedHeaders: ['Content-Length', 'X-Kuma-Revision'],
-  credentials: true,
-  optionsSuccessStatus: 200,
-  preflightContinue: false,
-};
-
-app.use(cors(corsOptions));
-app.options('*', cors(corsOptions));
+// ✅ Simple CORS
+app.use(cors());
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
 // Logging
 app.use((req, res, next) => {
   console.log(`📥 ${req.method} ${req.path}`);
-  console.log('🌍 Origin:', req.headers.origin);
   next();
 });
 
-// ===== MONGODB CONNECTION (Serverless Optimized) =====
+// ===== MONGODB =====
 const MONGODB_URI = process.env.MONGODB_URI || 'mongodb://localhost:27017/jobprostuti';
 
-// Global cache for MongoDB connection (important for Serverless)
 let cached = global.mongoose;
 
 if (!cached) {
@@ -53,18 +41,7 @@ async function connectDB() {
 
   if (!cached.promise) {
     console.log('🔄 Creating new MongoDB connection...');
-    const opts = {
-      serverSelectionTimeoutMS: 30000,
-      connectTimeoutMS: 30000,
-      socketTimeoutMS: 45000,
-      heartbeatFrequencyMS: 10000,
-      retryWrites: true,
-      retryReads: true,
-      maxPoolSize: 10,
-      minPoolSize: 2,
-    };
-
-    cached.promise = mongoose.connect(MONGODB_URI, opts)
+    cached.promise = mongoose.connect(MONGODB_URI)
       .then((mongoose) => {
         console.log('✅ MongoDB connected successfully!');
         return mongoose;
@@ -95,14 +72,12 @@ app.get('/health', async (req, res) => {
     res.json({
       status: 'ok',
       dbConnection: mongoose.connection.readyState === 1 ? 'connected' : 'disconnected',
-      timestamp: new Date().toISOString(),
     });
-  } catch (error) {
+  } catch (error: any) {
     res.status(500).json({
       status: 'error',
       dbConnection: 'failed',
       error: error.message,
-      timestamp: new Date().toISOString(),
     });
   }
 });
@@ -123,10 +98,9 @@ app.use((err: Error, req: express.Request, res: express.Response, next: express.
   res.status(500).json({ success: false, message: err.message || 'Internal server error' });
 });
 
-// ===== START SERVER (Local Only) =====
+// ===== START SERVER =====
 const PORT = process.env.PORT || 5000;
 
-// Only start server if not in production (Vercel)
 if (process.env.NODE_ENV !== 'production') {
   connectDB().then(() => {
     app.listen(PORT, () => {
@@ -134,9 +108,7 @@ if (process.env.NODE_ENV !== 'production') {
     });
   });
 } else {
-  // For Vercel - connect to DB but don't start server
   connectDB().catch(console.error);
 }
 
-// ===== EXPORT FOR VERCEL =====
 export default app;

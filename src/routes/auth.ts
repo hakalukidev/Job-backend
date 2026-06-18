@@ -5,9 +5,11 @@ import jwt from 'jsonwebtoken';
 import User from '../models/User';
 
 const router = express.Router();
+
+// ✅ Google Client Initialize
 const googleClient = new OAuth2Client(process.env.GOOGLE_CLIENT_ID);
 
-// Google Login Route
+// ✅ Google Login Route
 router.post('/google', async (req, res) => {
   try {
     console.log('📥 Google login request received');
@@ -19,7 +21,7 @@ router.post('/google', async (req, res) => {
 
     const { email, name, photoUrl, idToken } = req.body;
 
-    // Validate input
+    // ✅ Validate input
     if (!idToken) {
       console.log('❌ Missing ID token');
       return res.status(400).json({ 
@@ -36,7 +38,7 @@ router.post('/google', async (req, res) => {
       });
     }
 
-    // Verify Google ID Token
+    // ✅ Verify Google ID Token
     console.log('🔐 Verifying Google token...');
     let ticket;
     try {
@@ -60,11 +62,11 @@ router.post('/google', async (req, res) => {
       verified: payload?.email_verified 
     });
 
-    // Check if user exists in MongoDB
+    // ✅ Check if user exists in MongoDB
     let user = await User.findOne({ email });
 
     if (!user) {
-      // Create new user
+      // ✅ Create new user
       console.log('📝 Creating new user...');
       user = new User({
         email: email,
@@ -73,11 +75,16 @@ router.post('/google', async (req, res) => {
         provider: 'google',
         isVerified: payload?.email_verified || true,
         lastLogin: new Date(),
+        // ✅ Default values for required fields
+        enrolledCourses: [],
+        bookmarkedQuestions: [],
+        isActive: true,
+        role: 'user',
       });
       await user.save();
       console.log('✅ New user created in MongoDB:', email);
     } else {
-      // Update existing user
+      // ✅ Update existing user
       console.log('🔄 Updating existing user...');
       user.name = name || user.name;
       user.photoUrl = photoUrl || user.photoUrl;
@@ -86,7 +93,7 @@ router.post('/google', async (req, res) => {
       console.log('✅ User updated in MongoDB:', email);
     }
 
-    // Generate JWT token
+    // ✅ Generate JWT token
     console.log('🔑 Generating JWT token...');
     const token = jwt.sign(
       { 
@@ -99,7 +106,7 @@ router.post('/google', async (req, res) => {
     );
     console.log('✅ JWT token generated');
 
-    // Return response
+    // ✅ Return response
     const response = {
       success: true,
       token: token,
@@ -131,7 +138,121 @@ router.post('/google', async (req, res) => {
   }
 });
 
-// Get user profile (Protected route)
+// ✅ Email/Password Register
+router.post('/register', async (req, res) => {
+  try {
+    const { name, email, password, phone } = req.body;
+
+    // Check if user exists
+    const existingUser = await User.findOne({ email });
+    if (existingUser) {
+      return res.status(400).json({
+        success: false,
+        error: 'এই ইমেইলে ইতিমধ্যে অ্যাকাউন্ট আছে',
+      });
+    }
+
+    // Hash password
+    const bcrypt = await import('bcryptjs');
+    const hashedPassword = await bcrypt.hash(password, 10);
+
+    // Create user
+    const user = new User({
+      name,
+      email,
+      password: hashedPassword,
+      phone,
+      provider: 'local',
+      isVerified: false,
+      enrolledCourses: [],
+      bookmarkedQuestions: [],
+      isActive: true,
+      role: 'user',
+    });
+    await user.save();
+
+    // Generate JWT
+    const token = jwt.sign(
+      { userId: user._id, email: user.email },
+      process.env.JWT_SECRET || 'default_secret_key_change_me',
+      { expiresIn: '7d' }
+    );
+
+    res.status(201).json({
+      success: true,
+      token,
+      user: {
+        id: user._id,
+        name: user.name,
+        email: user.email,
+        phone: user.phone,
+      },
+    });
+  } catch (error: any) {
+    console.error('Register error:', error);
+    res.status(500).json({
+      success: false,
+      error: error.message || 'রেজিস্টার ব্যর্থ হয়েছে',
+    });
+  }
+});
+
+// ✅ Email/Password Login
+router.post('/login', async (req, res) => {
+  try {
+    const { email, password } = req.body;
+
+    // Find user
+    const user = await User.findOne({ email }).select('+password');
+    if (!user) {
+      return res.status(401).json({
+        success: false,
+        error: 'ইমেইল বা পাসওয়ার্ড ভুল',
+      });
+    }
+
+    // Verify password
+    const bcrypt = await import('bcryptjs');
+    const isPasswordValid = await bcrypt.compare(password, user.password);
+    if (!isPasswordValid) {
+      return res.status(401).json({
+        success: false,
+        error: 'ইমেইল বা পাসওয়ার্ড ভুল',
+      });
+    }
+
+    // Update last login
+    user.lastLogin = new Date();
+    await user.save();
+
+    // Generate JWT
+    const token = jwt.sign(
+      { userId: user._id, email: user.email },
+      process.env.JWT_SECRET || 'default_secret_key_change_me',
+      { expiresIn: '7d' }
+    );
+
+    res.json({
+      success: true,
+      token,
+      user: {
+        id: user._id,
+        name: user.name,
+        email: user.email,
+        phone: user.phone,
+        photoUrl: user.photoUrl,
+      },
+    });
+  } catch (error: any) {
+    console.error('Login error:', error);
+    res.status(500).json({
+      success: false,
+      error: error.message || 'লগইন ব্যর্থ হয়েছে',
+    });
+  }
+});
+
+// ✅ Get user profile (Protected route)
 router.get('/profile', async (req, res) => {
   try {
     const authHeader = req.headers.authorization;
@@ -147,7 +268,8 @@ router.get('/profile', async (req, res) => {
       return res.status(404).json({ error: 'User not found' });
     }
     
-    res.json({ success: true, data: user.toPublicJSON() });
+    // ✅ toPublicJSON() method ব্যবহার করুন
+    res.json({ success: true, data: user.toPublicJSON ? user.toPublicJSON() : user });
   } catch (error: any) {
     console.error('Profile error:', error);
     res.status(401).json({ error: 'Invalid token' });

@@ -12,8 +12,9 @@ dotenv.config();
 
 const app = express();
 
+// ===== CORS =====
 const corsOptions = {
-  origin: '*', // সব origin allow (Vercel এর জন্য)
+  origin: '*',
   methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH', 'OPTIONS'],
   allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With', 'Accept', 'Origin'],
   exposedHeaders: ['Content-Length', 'X-Kuma-Revision'],
@@ -22,53 +23,62 @@ const corsOptions = {
   preflightContinue: false,
 };
 
-// ===== CORS - সব Allow =====
 app.use(cors(corsOptions));
 app.options('*', cors(corsOptions));
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
+// Logging
 app.use((req, res, next) => {
   console.log(`📥 ${req.method} ${req.path}`);
   console.log('🌍 Origin:', req.headers.origin);
   next();
 });
 
-// ===== MONGODB CONNECTION WITH RETRY =====
+// ===== MONGODB CONNECTION (Serverless Optimized) =====
 const MONGODB_URI = process.env.MONGODB_URI || 'mongodb://localhost:27017/jobprostuti';
 
-const connectDB = async () => {
-  try {
-    await mongoose.connect(MONGODB_URI, {
+// Global cache for MongoDB connection (important for Serverless)
+let cached = global.mongoose;
+
+if (!cached) {
+  cached = global.mongoose = { conn: null, promise: null };
+}
+
+async function connectDB() {
+  if (cached.conn) {
+    console.log('✅ Using cached MongoDB connection');
+    return cached.conn;
+  }
+
+  if (!cached.promise) {
+    console.log('🔄 Creating new MongoDB connection...');
+    const opts = {
       serverSelectionTimeoutMS: 30000,
       connectTimeoutMS: 30000,
       socketTimeoutMS: 45000,
       heartbeatFrequencyMS: 10000,
       retryWrites: true,
       retryReads: true,
-    });
-    console.log('✅ MongoDB connected successfully!');
-    return true;
-  } catch (error) {
-    console.error('❌ MongoDB connection failed:', error);
-    console.log('🔄 Retrying in 5 seconds...');
-    setTimeout(connectDB, 5000);
-    return false;
+      maxPoolSize: 10,
+      minPoolSize: 2,
+    };
+
+    cached.promise = mongoose.connect(MONGODB_URI, opts)
+      .then((mongoose) => {
+        console.log('✅ MongoDB connected successfully!');
+        return mongoose;
+      })
+      .catch((err) => {
+        console.error('❌ MongoDB connection error:', err.message);
+        cached.promise = null;
+        throw err;
+      });
   }
-};
 
-// Connection events
-mongoose.connection.on('connected', () => {
-  console.log('✅ MongoDB connected');
-});
-
-mongoose.connection.on('error', (err) => {
-  console.error('❌ MongoDB connection error:', err);
-});
-
-mongoose.connection.on('disconnected', () => {
-  console.log('⚠️ MongoDB disconnected');
-});
+  cached.conn = await cached.promise;
+  return cached.conn;
+}
 
 // ===== ROUTES =====
 app.get('/', (req, res) => {
@@ -79,12 +89,22 @@ app.get('/', (req, res) => {
   });
 });
 
-app.get('/health', (req, res) => {
-  res.json({
-    status: 'ok',
-    dbConnection: mongoose.connection.readyState === 1 ? 'connected' : 'disconnected',
-    timestamp: new Date().toISOString(),
-  });
+app.get('/health', async (req, res) => {
+  try {
+    await connectDB();
+    res.json({
+      status: 'ok',
+      dbConnection: mongoose.connection.readyState === 1 ? 'connected' : 'disconnected',
+      timestamp: new Date().toISOString(),
+    });
+  } catch (error) {
+    res.status(500).json({
+      status: 'error',
+      dbConnection: 'failed',
+      error: error.message,
+      timestamp: new Date().toISOString(),
+    });
+  }
 });
 
 app.use('/api/auth', authRoutes);
@@ -103,14 +123,20 @@ app.use((err: Error, req: express.Request, res: express.Response, next: express.
   res.status(500).json({ success: false, message: err.message || 'Internal server error' });
 });
 
-// ===== START SERVER =====
+// ===== START SERVER (Local Only) =====
 const PORT = process.env.PORT || 5000;
 
-// First connect to MongoDB, then start server
-connectDB().then(() => {
-  app.listen(PORT, () => {
-    console.log(`🚀 Server running on http://localhost:${PORT}`);
+// Only start server if not in production (Vercel)
+if (process.env.NODE_ENV !== 'production') {
+  connectDB().then(() => {
+    app.listen(PORT, () => {
+      console.log(`🚀 Server running on http://localhost:${PORT}`);
+    });
   });
-});
+} else {
+  // For Vercel - connect to DB but don't start server
+  connectDB().catch(console.error);
+}
 
+// ===== EXPORT FOR VERCEL =====
 export default app;

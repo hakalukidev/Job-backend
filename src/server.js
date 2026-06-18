@@ -14,10 +14,25 @@ const courses_1 = __importDefault(require("./routes/courses"));
 const swagger_1 = __importDefault(require("./routes/swagger"));
 dotenv_1.default.config();
 const app = (0, express_1.default)();
+const corsOptions = {
+    origin: '*', // সব origin allow (Vercel এর জন্য)
+    methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH', 'OPTIONS'],
+    allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With', 'Accept', 'Origin'],
+    exposedHeaders: ['Content-Length', 'X-Kuma-Revision'],
+    credentials: true,
+    optionsSuccessStatus: 200,
+    preflightContinue: false,
+};
 // ===== CORS - সব Allow =====
-app.use((0, cors_1.default)());
+app.use((0, cors_1.default)(corsOptions));
+app.options('*', (0, cors_1.default)(corsOptions));
 app.use(express_1.default.json());
 app.use(express_1.default.urlencoded({ extended: true }));
+app.use((req, res, next) => {
+    console.log(`📥 ${req.method} ${req.path}`);
+    console.log('🌍 Origin:', req.headers.origin);
+    next();
+});
 // ===== MONGODB CONNECTION WITH RETRY =====
 const MONGODB_URI = process.env.MONGODB_URI || 'mongodb://localhost:27017/jobprostuti';
 const connectDB = async () => {

@@ -1,9 +1,7 @@
-// src/models/User.ts
 import bcrypt from 'bcryptjs';
-import mongoose, { CallbackWithoutResultAndOptionalError, Document, Schema } from 'mongoose';
+import mongoose, { Document, Schema } from 'mongoose';
 
 export interface IUser extends Document {
-  // ✅ User fields
   email: string;
   name: string;
   password?: string;
@@ -12,8 +10,6 @@ export interface IUser extends Document {
   isVerified: boolean;
   phone?: string;
   lastLogin: Date;
-  
-  // ✅ Additional fields
   avatar?: string;
   enrolledCourses: mongoose.Types.ObjectId[];
   bookmarkedQuestions: mongoose.Types.ObjectId[];
@@ -21,22 +17,18 @@ export interface IUser extends Document {
   role: 'user' | 'admin';
   createdAt: Date;
   updatedAt: Date;
-  
-  // ✅ Methods
   toPublicJSON(): any;
   comparePassword(candidatePassword: string): Promise<boolean>;
 }
 
 const UserSchema = new Schema<IUser>(
   {
-    // ✅ Core fields
     email: {
       type: String,
       required: true,
       unique: true,
       trim: true,
       lowercase: true,
-      index: true,
     },
     name: {
       type: String,
@@ -46,9 +38,6 @@ const UserSchema = new Schema<IUser>(
     password: {
       type: String,
       select: false,
-      required: function(this: IUser) {
-        return this.provider === 'local';
-      },
     },
     photoUrl: {
       type: String,
@@ -71,8 +60,6 @@ const UserSchema = new Schema<IUser>(
       type: Date,
       default: Date.now,
     },
-    
-    // ✅ Additional fields
     avatar: {
       type: String,
       default: '',
@@ -100,33 +87,21 @@ const UserSchema = new Schema<IUser>(
   }
 );
 
-// ✅ Pre-save middleware for password hashing
-UserSchema.pre('save', async function(next: CallbackWithoutResultAndOptionalError) {
-  if (!this.isModified('password') || !this.password) {
-    return next();
-  }
-  
-  try {
-    const salt = await bcrypt.genSalt(10);
-    this.password = await bcrypt.hash(this.password, salt);
-    next();
-  } catch (error: any) {
-    next(error);
-  }
-});
+// ❌ pre-save middleware সরিয়ে ফেলুন (কারণ আমরা admin.ts এ সরাসরি হ্যাশ করছি)
+// UserSchema.pre('save', function(next) { ... });
 
-// ✅ Compare password method
+// Compare password method
 UserSchema.methods.comparePassword = async function(candidatePassword: string): Promise<boolean> {
   if (!this.password) return false;
   return bcrypt.compare(candidatePassword, this.password);
 };
 
-// ✅ toPublicJSON method
+// toPublicJSON method
 UserSchema.methods.toPublicJSON = function() {
   const obj = this.toObject();
   delete obj.password;
   return obj;
 };
 
-export const User = mongoose.model<IUser>('User', UserSchema);
+const User = mongoose.model<IUser>('User', UserSchema);
 export default User;

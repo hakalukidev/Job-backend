@@ -1,4 +1,3 @@
-// src/middleware/auth.ts
 import { NextFunction, Request, Response } from 'express';
 import jwt from 'jsonwebtoken';
 
@@ -6,12 +5,16 @@ export interface AuthRequest extends Request {
   user?: {
     id: string;
     email: string;
+    role?: string;
   };
 }
 
-const auth = (req: AuthRequest, res: Response, next: NextFunction): void => {
+// ✅ async/await ব্যবহার করুন
+const auth = async (req: AuthRequest, res: Response, next: NextFunction): Promise<void> => {
   try {
     const authHeader = req.header('Authorization');
+    
+    console.log('🔐 Auth header:', authHeader ? 'Present' : 'Missing');
     
     if (!authHeader || !authHeader.startsWith('Bearer ')) {
       res.status(401).json({ 
@@ -22,33 +25,29 @@ const auth = (req: AuthRequest, res: Response, next: NextFunction): void => {
     }
 
     const token = authHeader.replace('Bearer ', '');
-    const jwtSecret = process.env.JWT_SECRET;
+    const jwtSecret = process.env.JWT_SECRET || 'default_secret';
     
-    if (!jwtSecret) {
-      console.error('JWT_SECRET is not defined');
-      res.status(500).json({ 
-        success: false, 
-        message: 'সার্ভার কনফিগারেশন ত্রুটি' 
-      });
-      return;
-    }
-
+    console.log('🔑 Token received:', token.substring(0, 20) + '...');
+    
     const decoded = jwt.verify(token, jwtSecret) as any;
     
+    console.log('✅ Token decoded:', decoded);
+    
     req.user = {
-      id: decoded.userId || decoded.id,
-      email: decoded.email
+      id: decoded.id || decoded.userId,
+      email: decoded.email,
+      role: decoded.role
     };
     
     next();
   } catch (error) {
+    console.error('❌ Auth error:', error);
     if (error instanceof jwt.JsonWebTokenError) {
       res.status(401).json({ 
         success: false, 
         message: 'টোকেন অবৈধ বা মেয়াদোত্তীর্ণ' 
       });
     } else {
-      console.error('Auth middleware error:', error);
       res.status(401).json({ 
         success: false, 
         message: 'টোকেন যাচাইকরণ ব্যর্থ হয়েছে' 

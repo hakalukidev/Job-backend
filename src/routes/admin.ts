@@ -1,9 +1,9 @@
 import express, { Request, Response, NextFunction } from 'express';
 import jwt from 'jsonwebtoken';
-import bcrypt from 'bcryptjs';
+import bcrypt from 'bcryptjs'; // ✅ যোগ করুন
 import auth, { AuthRequest } from '../middleware/auth';
 import User from '../models/User';
-import Question from '../models/Question';
+import Question from '../models/question'; // ✅ যোগ করুন
 
 const router = express.Router();
 
@@ -81,7 +81,7 @@ router.post('/demo-login', async (req: Request, res: Response) => {
   }
 });
 
-// Dashboard
+// ============== ✅ DASHBOARD ROUTE (যোগ করুন) ==============
 router.get('/dashboard', auth, isAdmin, async (req: AuthRequest, res: Response) => {
   try {
     console.log('📊 Dashboard API called');
@@ -89,27 +89,76 @@ router.get('/dashboard', auth, isAdmin, async (req: AuthRequest, res: Response) 
     const users = await User.find({}).select('-password').limit(10).sort({ createdAt: -1 });
     const totalUsers = await User.countDocuments();
     const totalQuestions = await Question.countDocuments();
+    const activeUsers = await User.countDocuments({ isActive: true });
+    
+    const stats = {
+      totalUsers: totalUsers || 0,
+      activeUsers: activeUsers || 0,
+      totalQuestions: totalQuestions || 0,
+      totalRevenue: '৳12,57,890',
+      userGrowth: 12,
+      activeUsersChange: 8,
+      totalApplications: 342,
+      applicationsGrowth: 15,
+      totalViews: 12450,
+      viewsChange: 22,
+      newJobs: 45,
+      pendingApplications: 28,
+      totalCompanies: 156,
+      averageRating: 4.8
+    };
+    
+    const recentActivities = [
+      { 
+        id: '1', 
+        description: 'নতুন ইউজার যোগ হয়েছে', 
+        user: users[0]?.name || 'আহমেদ হাসান', 
+        timestamp: '২ মিনিট আগে',
+        type: 'user',
+        status: 'success'
+      },
+      { 
+        id: '2', 
+        description: 'পরীক্ষা সম্পন্ন হয়েছে', 
+        user: users[1]?.name || 'সুমাইয়া আক্তার', 
+        timestamp: '১৫ মিনিট আগে',
+        type: 'exam',
+        status: 'success'
+      },
+      { 
+        id: '3', 
+        description: 'পেইড সাবস্ক্রিপশন', 
+        user: users[2]?.name || 'মোঃ আলী', 
+        timestamp: '১ ঘন্টা আগে',
+        type: 'payment',
+        status: 'success'
+      },
+    ];
+    
+    const userList = users.map((u: any) => ({
+      id: u._id,
+      name: u.name,
+      email: u.email,
+      status: u.isActive ? 'active' : 'inactive',
+      role: u.role
+    }));
     
     res.json({
-      stats: {
-        totalUsers: totalUsers,
-        totalQuestions: totalQuestions || 18450,
-        totalRevenue: '৳12,57,890',
-      },
-      users: users,
-      recentActivities: [
-        { id: '1', action: 'নতুন ইউজার যোগ হয়েছে', user: users[0]?.name || 'নতুন ইউজার', time: '২ মিনিট আগে' },
-        { id: '2', action: 'পরীক্ষা সম্পন্ন হয়েছে', user: users[1]?.name || 'সুমাইয়া আক্তার', time: '১৫ মিনিট আগে' },
-        { id: '3', action: 'পেইড সাবস্ক্রিপশন', user: users[2]?.name || 'মোঃ আলী', time: '১ ঘন্টা আগে' },
-      ]
+      success: true,
+      stats,
+      recentActivities,
+      users: userList
     });
   } catch (error: any) {
     console.error('Dashboard error:', error);
-    res.status(500).json({ success: false, message: error.message });
+    res.status(500).json({ 
+      success: false, 
+      message: error.message || 'Failed to load dashboard' 
+    });
   }
 });
 
-// Users
+// ============== USERS ==============
 router.get('/users', auth, isAdmin, async (req: AuthRequest, res: Response) => {
   try {
     const page = parseInt(req.query.page as string) || 1;
@@ -129,7 +178,7 @@ router.get('/users', auth, isAdmin, async (req: AuthRequest, res: Response) => {
   }
 });
 
-// Stats
+// ============== STATS ==============
 router.get('/stats', auth, isAdmin, async (req: AuthRequest, res: Response) => {
   try {
     const totalUsers = await User.countDocuments();
@@ -150,9 +199,7 @@ router.get('/stats', auth, isAdmin, async (req: AuthRequest, res: Response) => {
   }
 });
 
-// ============== QUESTIONS MANAGEMENT ==============
-
-// Get all questions with filters
+// ============== QUESTIONS ==============
 router.get('/questions', auth, isAdmin, async (req: AuthRequest, res: Response) => {
   try {
     const { category, difficulty, limit = 100 } = req.query;
@@ -161,14 +208,9 @@ router.get('/questions', auth, isAdmin, async (req: AuthRequest, res: Response) 
     if (category && category !== 'all') filter.category = category;
     if (difficulty) filter.difficulty = difficulty;
     
-    const questions = await Question.find(filter)
-      .sort({ createdAt: -1 })
-      .limit(Number(limit));
+    const questions = await Question.find(filter).sort({ createdAt: -1 }).limit(Number(limit));
     
-    res.json({
-      success: true,
-      data: questions
-    });
+    res.json({ success: true, data: questions });
   } catch (error: any) {
     console.error('Error fetching questions:', error);
     res.status(500).json({
@@ -178,20 +220,13 @@ router.get('/questions', auth, isAdmin, async (req: AuthRequest, res: Response) 
   }
 });
 
-// Get single question
 router.get('/questions/:id', auth, isAdmin, async (req: AuthRequest, res: Response) => {
   try {
     const question = await Question.findById(req.params.id);
     if (!question) {
-      return res.status(404).json({
-        success: false,
-        message: 'Question not found'
-      });
+      return res.status(404).json({ success: false, message: 'Question not found' });
     }
-    res.json({
-      success: true,
-      data: question
-    });
+    res.json({ success: true, data: question });
   } catch (error: any) {
     res.status(500).json({
       success: false,
@@ -200,37 +235,21 @@ router.get('/questions/:id', auth, isAdmin, async (req: AuthRequest, res: Respon
   }
 });
 
-// Update question
 router.put('/questions/:id', auth, isAdmin, async (req: AuthRequest, res: Response) => {
   try {
     const { text, options, correctOption, explanation, marks, difficulty, category } = req.body;
     
     const question = await Question.findByIdAndUpdate(
       req.params.id,
-      {
-        text,
-        options,
-        correctOption,
-        explanation,
-        marks,
-        difficulty,
-        category,
-        updatedAt: new Date()
-      },
+      { text, options, correctOption, explanation, marks, difficulty, category, updatedAt: new Date() },
       { new: true, runValidators: true }
     );
     
     if (!question) {
-      return res.status(404).json({
-        success: false,
-        message: 'Question not found'
-      });
+      return res.status(404).json({ success: false, message: 'Question not found' });
     }
     
-    res.json({
-      success: true,
-      data: question
-    });
+    res.json({ success: true, data: question });
   } catch (error: any) {
     res.status(500).json({
       success: false,
@@ -239,20 +258,13 @@ router.put('/questions/:id', auth, isAdmin, async (req: AuthRequest, res: Respon
   }
 });
 
-// Delete question
 router.delete('/questions/:id', auth, isAdmin, async (req: AuthRequest, res: Response) => {
   try {
     const question = await Question.findByIdAndDelete(req.params.id);
     if (!question) {
-      return res.status(404).json({
-        success: false,
-        message: 'Question not found'
-      });
+      return res.status(404).json({ success: false, message: 'Question not found' });
     }
-    res.json({
-      success: true,
-      message: 'Question deleted successfully'
-    });
+    res.json({ success: true, message: 'Question deleted successfully' });
   } catch (error: any) {
     res.status(500).json({
       success: false,

@@ -1,13 +1,18 @@
 import mongoose, { Schema, Document } from 'mongoose';
 
 export interface IQuestion extends Document {
-  question: string;
-  options: string[];
-  correctAnswer: number;
+  text: string;
+  options: {
+    A: string;
+    B: string;
+    C: string;
+    D: string;
+  };
+  correctOption: 'A' | 'B' | 'C' | 'D';
   explanation?: string;
   marks: number;
   difficulty: 'easy' | 'medium' | 'hard';
-  category: string;
+  category: 'bcs' | 'bank' | 'primary' | 'job-solution';
   courseId?: mongoose.Types.ObjectId;
   examId?: mongoose.Types.ObjectId;
   source: 'manual' | 'pdf' | 'excel';
@@ -19,9 +24,18 @@ export interface IQuestion extends Document {
 
 const QuestionSchema = new Schema<IQuestion>(
   {
-    question: { type: String, required: true },
-    options: { type: [String], required: true },
-    correctAnswer: { type: Number, required: true },
+    text: { type: String, required: true },
+    options: {
+      A: { type: String, required: true },
+      B: { type: String, required: true },
+      C: { type: String, required: true },
+      D: { type: String, required: true }
+    },
+    correctOption: { 
+      type: String, 
+      enum: ['A', 'B', 'C', 'D'], 
+      required: true 
+    },
     explanation: { type: String },
     marks: { type: Number, default: 1 },
     difficulty: { 
@@ -49,5 +63,6 @@ const QuestionSchema = new Schema<IQuestion>(
   }
 );
 
-const Question = mongoose.model<IQuestion>('Question', QuestionSchema);
+// ✅ Fix: Check if model exists before creating
+const Question = mongoose.models.Question || mongoose.model<IQuestion>('Question', QuestionSchema);
 export default Question;

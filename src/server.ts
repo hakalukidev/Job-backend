@@ -8,13 +8,19 @@ import authRoutes from './routes/auth';
 import contentAdminRoutes from './routes/contentAdmin';
 import courseRoutes from './routes/courses';
 import swaggerRoutes from './routes/swagger';
+import uploadRoutes from './routes/upload'; // ✅ যোগ করুন
 
 dotenv.config();
 
 const app = express();
 
-// ✅ Simple CORS
-app.use(cors());
+// ✅ CORS
+app.use(cors({
+  origin: '*',
+  credentials: true,
+  methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH', 'OPTIONS'],
+  allowedHeaders: ['Content-Type', 'Authorization']
+}));
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
@@ -82,9 +88,11 @@ app.get('/health', async (req, res) => {
   }
 });
 
+// ===== ROUTES =====
 app.use('/api/auth', authRoutes);
 app.use('/api/admin', adminRoutes);
 app.use('/api/admin/content', contentAdminRoutes);
+app.use('/api/upload', uploadRoutes); // ✅ যোগ করুন
 app.use(swaggerRoutes);
 app.use('/api', courseRoutes);
 
@@ -99,16 +107,13 @@ app.use((err: Error, req: express.Request, res: express.Response, next: express.
 });
 
 // ===== START SERVER =====
-const PORT = process.env.PORT || 5000;
+const PORT = process.env.PORT || 8081;
 
-if (process.env.NODE_ENV !== 'production') {
-  connectDB().then(() => {
-    app.listen(PORT, () => {
-      console.log(`🚀 Server running on http://localhost:${PORT}`);
-    });
+connectDB().then(() => {
+  app.listen(PORT, () => {
+    console.log(`🚀 Server running on http://localhost:${PORT}`);
+    console.log(`📡 Health: http://localhost:${PORT}/health`);
   });
-} else {
-  connectDB().catch(console.error);
-}
+}).catch(console.error);
 
 export default app;

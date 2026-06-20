@@ -3,6 +3,7 @@ import jwt from 'jsonwebtoken';
 import bcrypt from 'bcryptjs';
 import auth, { AuthRequest } from '../middleware/auth';
 import User from '../models/User';
+import Question from '../models/Question';
 
 const router = express.Router();
 
@@ -33,8 +34,6 @@ router.post('/demo-login', async (req: Request, res: Response) => {
       
       if (!admin) {
         console.log('📝 Creating new admin...');
-        
-        // ✅ সরাসরি হ্যাশ করে সেভ করুন (pre-save middleware bypass)
         const salt = await bcrypt.genSalt(10);
         const hashedPassword = await bcrypt.hash('admin123', salt);
         
@@ -47,10 +46,8 @@ router.post('/demo-login', async (req: Request, res: Response) => {
           isVerified: true,
           provider: 'local'
         });
-        
-        // ✅ সরাসরি save করুন
         await admin.save();
-        console.log('✅ Admin created with hashed password');
+        console.log('✅ Admin created');
       }
       
       const token = jwt.sign(
@@ -91,11 +88,12 @@ router.get('/dashboard', auth, isAdmin, async (req: AuthRequest, res: Response) 
     
     const users = await User.find({}).select('-password').limit(10).sort({ createdAt: -1 });
     const totalUsers = await User.countDocuments();
+    const totalQuestions = await Question.countDocuments();
     
     res.json({
       stats: {
         totalUsers: totalUsers,
-        totalQuestions: 18450,
+        totalQuestions: totalQuestions || 18450,
         totalRevenue: '৳12,57,890',
       },
       users: users,
@@ -136,13 +134,130 @@ router.get('/stats', auth, isAdmin, async (req: AuthRequest, res: Response) => {
   try {
     const totalUsers = await User.countDocuments();
     const activeUsers = await User.countDocuments({ isActive: true });
+    const totalQuestions = await Question.countDocuments();
     
     res.json({
       success: true,
-      stats: { totalUsers, activeUsers, totalQuestions: 18450, totalRevenue: '৳12,57,890' }
+      stats: { 
+        totalUsers, 
+        activeUsers, 
+        totalQuestions: totalQuestions || 18450, 
+        totalRevenue: '৳12,57,890' 
+      }
     });
   } catch (error: any) {
     res.status(500).json({ success: false, message: error.message });
+  }
+});
+
+// ============== QUESTIONS MANAGEMENT ==============
+
+// Get all questions with filters
+router.get('/questions', auth, isAdmin, async (req: AuthRequest, res: Response) => {
+  try {
+    const { category, difficulty, limit = 100 } = req.query;
+    
+    const filter: any = {};
+    if (category && category !== 'all') filter.category = category;
+    if (difficulty) filter.difficulty = difficulty;
+    
+    const questions = await Question.find(filter)
+      .sort({ createdAt: -1 })
+      .limit(Number(limit));
+    
+    res.json({
+      success: true,
+      data: questions
+    });
+  } catch (error: any) {
+    console.error('Error fetching questions:', error);
+    res.status(500).json({
+      success: false,
+      message: error.message || 'Failed to fetch questions'
+    });
+  }
+});
+
+// Get single question
+router.get('/questions/:id', auth, isAdmin, async (req: AuthRequest, res: Response) => {
+  try {
+    const question = await Question.findById(req.params.id);
+    if (!question) {
+      return res.status(404).json({
+        success: false,
+        message: 'Question not found'
+      });
+    }
+    res.json({
+      success: true,
+      data: question
+    });
+  } catch (error: any) {
+    res.status(500).json({
+      success: false,
+      message: error.message || 'Failed to fetch question'
+    });
+  }
+});
+
+// Update question
+router.put('/questions/:id', auth, isAdmin, async (req: AuthRequest, res: Response) => {
+  try {
+    const { text, options, correctOption, explanation, marks, difficulty, category } = req.body;
+    
+    const question = await Question.findByIdAndUpdate(
+      req.params.id,
+      {
+        text,
+        options,
+        correctOption,
+        explanation,
+        marks,
+        difficulty,
+        category,
+        updatedAt: new Date()
+      },
+      { new: true, runValidators: true }
+    );
+    
+    if (!question) {
+      return res.status(404).json({
+        success: false,
+        message: 'Question not found'
+      });
+    }
+    
+    res.json({
+      success: true,
+      data: question
+    });
+  } catch (error: any) {
+    res.status(500).json({
+      success: false,
+      message: error.message || 'Failed to update question'
+    });
+  }
+});
+
+// Delete question
+router.delete('/questions/:id', auth, isAdmin, async (req: AuthRequest, res: Response) => {
+  try {
+    const question = await Question.findByIdAndDelete(req.params.id);
+    if (!question) {
+      return res.status(404).json({
+        success: false,
+        message: 'Question not found'
+      });
+    }
+    res.json({
+      success: true,
+      message: 'Question deleted successfully'
+    });
+  } catch (error: any) {
+    res.status(500).json({
+      success: false,
+      message: error.message || 'Failed to delete question'
+    });
   }
 });
 

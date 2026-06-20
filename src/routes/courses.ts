@@ -5,7 +5,6 @@ import CourseCategory from '../models/courseCategory';
 import Exam from '../models/exam';
 import ExamResult from '../models/examResult';
 import Note from '../models/note';
-import Question from '../models/question';
 import UserHistory from '../models/userHistory';
 
 const router = express.Router();

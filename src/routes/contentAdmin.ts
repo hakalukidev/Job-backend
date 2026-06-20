@@ -1,127 +1,46 @@
-import express, { NextFunction, Response } from 'express';
-import auth, { AuthRequest } from '../middleware/auth';
-import Course from '../models/course';
-import CourseCategory from '../models/courseCategory';
-import Exam from '../models/exam';
-import Note from '../models/note';
-import Question from '../models/question';
-import User from '../models/User';
+import express from 'express';
+import auth from '../middleware/auth';
+import { AuthRequest } from '../middleware/auth';
+import Question from '../models/Question';
+// Category, Course, Exam models এখনো প্রয়োজন নেই, কিন্তু পরে যোগ করা যাবে
 
 const router = express.Router();
 
-const slugify = (value: string) =>
-  value
-    .toLowerCase()
-    .trim()
-    .replace(/[^a-z0-9]+/g, '-')
-    .replace(/^-+|-+$/g, '');
-
-const isAdmin = async (req: AuthRequest, res: Response, next: NextFunction) => {
+// ===== QUESTIONS =====
+router.post('/questions', auth, async (req: AuthRequest, res: any) => {
   try {
-    const user = await User.findById(req.user?.id);
-    if (!user || user.role !== 'admin') {
-      return res.status(403).json({ success: false, message: 'Admin access required' });
-    }
-    next();
-  } catch (error: any) {
-    res.status(500).json({ success: false, message: error.message });
-  }
-};
-
-router.use(auth, isAdmin);
-
-router.post('/categories', async (req, res) => {
-  try {
-    const payload = {
-      ...req.body,
-      slug: req.body.slug || slugify(req.body.name),
-    };
-    const category = await CourseCategory.create(payload);
-    res.status(201).json({ success: true, data: category });
-  } catch (error: any) {
-    res.status(400).json({ success: false, message: error.message });
-  }
-});
-
-router.put('/categories/:id', async (req, res) => {
-  try {
-    const category = await CourseCategory.findByIdAndUpdate(req.params.id, req.body, {
-      returnDocument: 'after',
-      runValidators: true,
+    const { text, options, correctOption, explanation, marks, difficulty, category, courseId, examId } = req.body;
+    
+    console.log('📝 Creating question:', { text, category });
+    
+    const question = new Question({
+      text,
+      options,
+      correctOption,
+      explanation,
+      marks: marks || 1,
+      difficulty: difficulty || 'medium',
+      category,
+      courseId,
+      examId,
+      source: 'manual',
+      isActive: true
     });
-    res.json({ success: true, data: category });
-  } catch (error: any) {
-    res.status(400).json({ success: false, message: error.message });
-  }
-});
-
-router.post('/courses', async (req, res) => {
-  try {
-    const payload = {
-      ...req.body,
-      slug: req.body.slug || slugify(req.body.title),
-    };
-    const course = await Course.create(payload);
-    res.status(201).json({ success: true, data: course });
-  } catch (error: any) {
-    res.status(400).json({ success: false, message: error.message });
-  }
-});
-
-router.put('/courses/:id', async (req, res) => {
-  try {
-    const course = await Course.findByIdAndUpdate(req.params.id, req.body, {
-      returnDocument: 'after',
-      runValidators: true,
+    
+    await question.save();
+    console.log('✅ Question created:', question._id);
+    
+    res.status(201).json({ 
+      success: true, 
+      data: question,
+      message: 'Question created successfully'
     });
-    res.json({ success: true, data: course });
   } catch (error: any) {
-    res.status(400).json({ success: false, message: error.message });
-  }
-});
-
-router.post('/questions', async (req, res) => {
-  try {
-    const question = await Question.create(req.body);
-    res.status(201).json({ success: true, data: question });
-  } catch (error: any) {
-    res.status(400).json({ success: false, message: error.message });
-  }
-});
-
-router.post('/courses/:courseId/notes', async (req, res) => {
-  try {
-    const note = await Note.create({
-      ...req.body,
-      courseId: req.params.courseId,
+    console.error('❌ Error creating question:', error);
+    res.status(500).json({ 
+      success: false, 
+      message: error.message || 'Failed to create question' 
     });
-    res.status(201).json({ success: true, data: note });
-  } catch (error: any) {
-    res.status(400).json({ success: false, message: error.message });
-  }
-});
-
-router.post('/exams', async (req, res) => {
-  try {
-    const exam = await Exam.create(req.body);
-    await Course.findByIdAndUpdate(req.body.courseId, {
-      $inc: { totalExams: 1 },
-    });
-    res.status(201).json({ success: true, data: exam });
-  } catch (error: any) {
-    res.status(400).json({ success: false, message: error.message });
-  }
-});
-
-router.put('/exams/:id', async (req, res) => {
-  try {
-    const exam = await Exam.findByIdAndUpdate(req.params.id, req.body, {
-      returnDocument: 'after',
-      runValidators: true,
-    });
-    res.json({ success: true, data: exam });
-  } catch (error: any) {
-    res.status(400).json({ success: false, message: error.message });
   }
 });
 

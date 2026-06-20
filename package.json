@@ -6,8 +6,9 @@
   "scripts": {
     "start": "tsx src/server.ts",
     "dev": "tsx watch src/server.ts",
-    "build": "tsc --noEmit",
-    "server": "tsx watch src/server.ts"
+    "build": "tsc",
+    "server": "tsx watch src/server.ts",
+    "vercel-build": "npm run build"
   },
   "keywords": [],
   "author": "",
@@ -20,13 +21,17 @@
     "express": "^5.2.1",
     "google-auth-library": "^10.7.0",
     "jsonwebtoken": "^9.0.3",
-    "mongoose": "^9.7.0"
+    "lucide-react": "^1.21.0",
+    "mongoose": "^9.7.1",
+    "multer": "^2.2.0",
+    "pdf-parse": "^2.4.5"
   },
   "devDependencies": {
     "@types/bcryptjs": "^2.4.6",
     "@types/cors": "^2.8.19",
     "@types/express": "^5.0.6",
     "@types/jsonwebtoken": "^9.0.10",
+    "@types/multer": "^2.1.0",
     "@types/node": "^20.19.43",
     "nodemon": "^3.1.14",
     "ts-node": "^10.9.2",

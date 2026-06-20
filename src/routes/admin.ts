@@ -212,7 +212,11 @@ router.get('/questions', auth, isAdmin, async (req: AuthRequest, res: Response) 
     
     res.json({ success: true, data: questions });
   } catch (error: any) {
-    res.status(500).json({ success: false, message: error.message });
+    console.error('Error fetching questions:', error);
+    res.status(500).json({
+      success: false,
+      message: error.message || 'Failed to fetch questions'
+    });
   }
 });
 
@@ -224,7 +228,10 @@ router.get('/questions/:id', auth, isAdmin, async (req: AuthRequest, res: Respon
     }
     res.json({ success: true, data: question });
   } catch (error: any) {
-    res.status(500).json({ success: false, message: error.message });
+    res.status(500).json({
+      success: false,
+      message: error.message || 'Failed to fetch question'
+    });
   }
 });
 
@@ -244,7 +251,10 @@ router.put('/questions/:id', auth, isAdmin, async (req: AuthRequest, res: Respon
     
     res.json({ success: true, data: question });
   } catch (error: any) {
-    res.status(500).json({ success: false, message: error.message });
+    res.status(500).json({
+      success: false,
+      message: error.message || 'Failed to update question'
+    });
   }
 });
 
@@ -256,7 +266,10 @@ router.delete('/questions/:id', auth, isAdmin, async (req: AuthRequest, res: Res
     }
     res.json({ success: true, message: 'Question deleted successfully' });
   } catch (error: any) {
-    res.status(500).json({ success: false, message: error.message });
+    res.status(500).json({
+      success: false,
+      message: error.message || 'Failed to delete question'
+    });
   }
 });
 

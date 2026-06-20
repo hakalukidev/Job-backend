@@ -12,8 +12,7 @@
     "resolveJsonModule": true,
     "types": ["node"],
     "rootDir": "src",
-    "noEmit": true
+    "noEmit": false
   },
-  "include": ["src/**/*"]
-
+  "include": ["src/**/*"],
 }

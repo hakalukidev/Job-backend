@@ -36,19 +36,15 @@ var __importDefault = (this && this.__importDefault) || function (mod) {
     return (mod && mod.__esModule) ? mod : { "default": mod };
 };
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.User = void 0;
-// src/models/User.ts (এটাই রাখো, অন্যটা delete করো)
 const bcryptjs_1 = __importDefault(require("bcryptjs"));
 const mongoose_1 = __importStar(require("mongoose"));
 const UserSchema = new mongoose_1.Schema({
-    // ✅ নতুন ফিল্ড (Google Login)
     email: {
         type: String,
         required: true,
         unique: true,
         trim: true,
         lowercase: true,
-        index: true,
     },
     name: {
         type: String,
@@ -80,69 +76,43 @@ const UserSchema = new mongoose_1.Schema({
         type: Date,
         default: Date.now,
     },
-    // ✅ পুরনো ফিল্ড
     avatar: {
         type: String,
+        default: '',
     },
     enrolledCourses: [{
             type: mongoose_1.Schema.Types.ObjectId,
-            ref: 'Course'
+            ref: 'Course',
         }],
     bookmarkedQuestions: [{
             type: mongoose_1.Schema.Types.ObjectId,
-            ref: 'Question'
+            ref: 'Question',
         }],
     isActive: {
         type: Boolean,
-        default: true
+        default: true,
     },
     role: {
         type: String,
         enum: ['user', 'admin'],
-        default: 'user'
+        default: 'user',
     },
 }, {
     timestamps: true,
 });
-// ✅ Hash password before saving (শুধুমাত্র local login এর জন্য)
-UserSchema.pre('save', async function (next) {
-    if (!this.isModified('password'))
-        return next();
-    try {
-        const salt = await bcryptjs_1.default.genSalt(12);
-        this.password = await bcryptjs_1.default.hash(this.password, salt);
-        next();
-    }
-    catch (error) {
-        next(error);
-    }
-});
-// ✅ Compare password method
+// ❌ pre-save middleware সরিয়ে ফেলুন (কারণ আমরা admin.ts এ সরাসরি হ্যাশ করছি)
+// UserSchema.pre('save', function(next) { ... });
+// Compare password method
 UserSchema.methods.comparePassword = async function (candidatePassword) {
     if (!this.password)
         return false;
-    return await bcryptjs_1.default.compare(candidatePassword, this.password);
+    return bcryptjs_1.default.compare(candidatePassword, this.password);
 };
-// ✅ toPublicJSON method
+// toPublicJSON method
 UserSchema.methods.toPublicJSON = function () {
-    return {
-        id: this._id,
-        email: this.email,
-        name: this.name,
-        photoUrl: this.photoUrl || this.avatar,
-        provider: this.provider,
-        isVerified: this.isVerified,
-        role: this.role,
-        isActive: this.isActive,
-        enrolledCourses: this.enrolledCourses,
-        bookmarkedQuestions: this.bookmarkedQuestions,
-        createdAt: this.createdAt,
-        updatedAt: this.updatedAt,
-    };
+    const obj = this.toObject();
+    delete obj.password;
+    return obj;
 };
-// Static method to find by email
-UserSchema.statics.findByEmail = function (email) {
-    return this.findOne({ email: email.toLowerCase() });
-};
-exports.User = mongoose_1.default.model('User', UserSchema);
-exports.default = exports.User;
+const User = mongoose_1.default.model('User', UserSchema);
+exports.default = User;
